@@ -2,7 +2,7 @@ import sys
 import os
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                               QScrollArea, QFileDialog, QMessageBox, QGroupBox, QSpinBox)
+                               QScrollArea, QFileDialog, QMessageBox, QGroupBox, QSpinBox, QComboBox)
 from PySide6.QtCore import Qt
 
 # Ensure the current directory is in the path to import EnvironmentConfig
@@ -15,22 +15,27 @@ class PSUConfigWidget(QGroupBox):
         self.layout = QVBoxLayout(self)
 
         # Fields
-        self.protocol_edit = QLineEdit()
+        self.protocol_edit = QComboBox()
+        self.protocol_edit.setEditable(False)
+        self.protocol_edit.addItems(["IP", "Serial"])
+
         self.ip_edit = QLineEdit()
         self.com_edit = QLineEdit()
         self.baudrate_spin = QSpinBox()
         self.baudrate_spin.setRange(0, 10000000)
-        self.interface_edit = QLineEdit()
+        self.interface_edit = QComboBox()
+        self.interface_edit.setEditable(False)
+        self.interface_edit.addItems(["SCPI", "CAN"])
         self.channel_spin = QSpinBox()
         self.channel_spin.setRange(0, 1000)
 
         # Populate with data if provided
         if psu_config:
-            self.protocol_edit.setText(str(psu_config.protocol))
+            self.protocol_edit.setCurrentText(str(psu_config.protocol))
             self.ip_edit.setText(str(psu_config.IP))
             self.com_edit.setText(str(psu_config.COM))
             self.baudrate_spin.setValue(int(psu_config.baudrate))
-            self.interface_edit.setText(str(psu_config.interface))
+            self.interface_edit.setCurrentText(str(psu_config.interface))
             self.channel_spin.setValue(int(psu_config.channel))
         else:
             self.baudrate_spin.setValue(115200)
