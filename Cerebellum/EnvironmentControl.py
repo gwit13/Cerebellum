@@ -13,11 +13,12 @@ from TestSettings import TestSettings, PSUSettings, Criterion
 from _PSU import _PSU
 
 import logging, signal
+logging.basicConfig(level=logging.INFO)
 
 
 
 """
-Main Test Function =============================================================
+Main Test Functions ============================================================
 """
 
 def runTest(config: EnvironmentConfig, settings: TestSettings):
@@ -26,124 +27,138 @@ def runTest(config: EnvironmentConfig, settings: TestSettings):
     try:
 
         # Initialize all PSUs
-        print()
-        print("Intializing PSUs ==========")
-        PSUList = []
-        for idx, psu in enumerate(config.PSUConfigList):
-            if (settings.PSUSettingsList[idx].enable):
-                print(f"Initializing PSU #{idx}")
-                PSUList.append(_PSU(psu))
-            else:
-                print(f"PSU #{idx} is disabled, skipping initialization")
-                PSUList.append(None)
+        logging.info("Intializing PSUs ==========")
+        PSUList = _initPSUList(config.PSUConfigList, settings.PSUSettingsList)
 
         # Report and wait for user input
-        print()
-        print("All PSUs initialized successfully.")
-        print("Verify the credentials appear as expected before continuing. (Next step: Setting PSUs to assigned levels)")
+        logging.info("")
+        logging.info("All PSUs initialized successfully.")
+        logging.info("Verify the credentials appear as expected before continuing. (Next step: Setting PSUs to assigned levels)")
         input("Press Enter to continue...")
-        print()
+        logging.info("")
 
         # Set all PSUs to their assigned settings
-        print("Setting PSUs to assigned levels ==========")
-        for idx, (psu, setting) in enumerate(zip(PSUList, settings.PSUSettingsList)):
-            if psu:
-                print(f"Setting PSU #{idx} -----")
-                print(f"Voltage: {setting.voltage}")
-                print(f"Current: {setting.current}")
-                psu.turnOff()
-                psu.setVoltage(setting.voltage)
-                actualSetVoltage = psu.getVoltage()
-                if (actualSetVoltage != setting.voltage):
-                    raise RuntimeError(f"Voltage setting of PSU #{idx} ({actualSetVoltage} V) does not match expected setting ({setting.voltage} V). The desired setting may be out-of-range for this PSU.")
-                psu.setCurrent(setting.current)
-                actualSetCurrent = psu.getCurrent()
-                if (actualSetCurrent != setting.current):
-                    raise RuntimeError(f"Current setting of PSU #{idx} ({actualSetCurrent} A) does not match expected setting ({setting.current} A). The desired setting may be out-of-range for this PSU.")
+        logging.info("Setting PSUs to assigned levels ==========")
+        _setPSUList(PSUList, settings.PSUSettingsList)
         
         # Report and wait for user input
-        print()
-        print("All PSUs set successfully.")
-        print("Verify the settings appear as expected before continuing. (Next step: Enabling PSUs)")
+        logging.info("")
+        logging.info("All PSUs set successfully.")
+        logging.info("Verify the settings appear as expected before continuing. (Next step: Enabling PSUs)")
         input("Press Enter to continue...")
-        print()
+        logging.info("")
 
         # Turn on all PSUs
-        print("Enabling PSUs ==========")
-        for idx, psu in enumerate(PSUList):
-            if psu:
-                print(f"Enabling PSU #{idx} -----")
-                psu.turnOn()
+        logging.info("Enabling PSUs ==========")
+        _enablePSUList(PSUList)
 
         # Report and wait for user input
-        print()
-        print("All PSUs enabled successfully.")
-        print("Verify the PSUs are behaving as expected before continuing. (Next step: Evaluating test criteria)")
+        logging.info("")
+        logging.info("All PSUs enabled successfully.")
+        logging.info("Verify the PSUs are behaving as expected before continuing. (Next step: Evaluating test criteria)")
         input("Press Enter to continue...")
-        print()
+        logging.info("")
 
         # Eval all criteria
-        print("Evaluating test criteria ==========")
-        for idx, criterion in enumerate(settings.criteriaList):
-            if PSUList[criterion.PSUidx]:
-                print(f"Evaluating criterion #{idx} -----")
-                if (criterion.criterionType == "PSUCurrent"):
-                    if (_evalPSUCurrent(criterion, PSUList[criterion.PSUidx])):
-                        print("PASS")
-                    else:
-                        print("FAIL")
-                elif (criterion.criterionType == "PSUVoltage"):
-                    if (_evalPSUVoltage(criterion, PSUList[criterion.PSUidx])):
-                        print("PASS")
-                    else:
-                        print("FAIL")
-                else:
-                    raise ValueError(f"Invalid criterionType value: {criterion.criterionType}")
-            else:
-                print(f"Criterion #{idx} refers to a disabled PSU (#{criterion.PSUidx}), skipping evaluation -----")
+        logging.info("Evaluating test criteria ==========")
+        _evalCriteria(PSUList, settings.criteriaList)
 
         # Report and wait for user input
-        print()
-        print("All criteria checked successfully. (Next step: Disabling PSUs)")
+        logging.info("")
+        logging.info("All criteria checked successfully. (Next step: Disabling PSUs)")
         input("Press Enter to continue...")
     
     # If there are any errors in normal operation, skip to disabling the PSUs
     # Block all external interrupts while doing so, and keep disabling the other
     # PSUs even if one of them fails
+    except Exception as e:
+        logging.error(f"During the test sequence, an exception was encountered: {e}")
+        logging.error(f"Aborting test sequence.")
+        pass
     finally:
         with _DelayedInterrupt([signal.SIGINT, signal.SIGTERM]):
             # Turn off all PSUs
-            print()
-            print("Disabling PSUs ==========")
+            logging.info("")
+            logging.info("Disabling PSUs ==========")
             for idx, psu in enumerate(PSUList):
                 try:
                     if psu:
-                        print(f"Disabling PSU #{idx} -----")
+                        logging.info(f"Disabling PSU #{idx} -----")
                         psu.turnOff()
                 except Exception as e:
                     logging.warning(f"While attemping to disable PSU #{idx}, an exception was encountered: {e}")
                     pass
-            print()
+            logging.info("")
 
+def _initPSUList(PSUConfigList: list[PSUConfig], PSUSettingsList: list[PSUSettings]):
+    PSUList = []
+    for idx, psu in enumerate(PSUConfigList):
+        if (PSUSettingsList[idx].enable):
+            logging.info(f"Initializing PSU #{idx}")
+            PSUList.append(_PSU(psu))
+        else:
+            logging.info(f"PSU #{idx} is disabled, skipping initialization")
+            PSUList.append(None)
+    return PSUList
 
+def _setPSUList(PSUList: list[_PSU], PSUSettingsList: list[PSUSettings]):
+    for idx, (psu, setting) in enumerate(zip(PSUList, PSUSettingsList)):
+        if psu:
+            logging.info(f"Setting PSU #{idx} -----")
+            logging.info(f"Voltage: {setting.voltage}")
+            logging.info(f"Current: {setting.current}")
+            psu.turnOff()
+            psu.setVoltage(setting.voltage)
+            actualSetVoltage = psu.getVoltage()
+            if (actualSetVoltage != setting.voltage):
+                raise RuntimeError(f"Voltage setting of PSU #{idx} ({actualSetVoltage} V) does not match expected setting ({setting.voltage} V). The desired setting may be out-of-range for this PSU.")
+            psu.setCurrent(setting.current)
+            actualSetCurrent = psu.getCurrent()
+            if (actualSetCurrent != setting.current):
+                raise RuntimeError(f"Current setting of PSU #{idx} ({actualSetCurrent} A) does not match expected setting ({setting.current} A). The desired setting may be out-of-range for this PSU.")
+
+def _enablePSUList(PSUList: list[_PSU]):
+    for idx, psu in enumerate(PSUList):
+        if psu:
+            logging.info(f"Enabling PSU #{idx} -----")
+            psu.turnOn()
+
+def _evalCriteria(PSUList: list[_PSU], criteriaList: list[Criterion]):
+    for idx, criterion in enumerate(criteriaList):
+        if PSUList[criterion.PSUidx]:
+            logging.info(f"Evaluating criterion #{idx} -----")
+            if (criterion.criterionType == "PSUCurrent"):
+                if (_evalPSUCurrent(criterion, PSUList[criterion.PSUidx])):
+                    logging.info("PASS")
+                else:
+                    logging.info("FAIL")
+            elif (criterion.criterionType == "PSUVoltage"):
+                if (_evalPSUVoltage(criterion, PSUList[criterion.PSUidx])):
+                    logging.info("PASS")
+                else:
+                    logging.info("FAIL")
+            else:
+                raise ValueError(f"Invalid criterionType value: {criterion.criterionType}")
+        else:
+            logging.warning(f"Criterion #{idx} refers to a disabled PSU (#{criterion.PSUidx}), skipping evaluation -----")
 
 """
 Criterion Evaluation ===========================================================
 """
 
 def _evalPSUVoltage(criterion: Criterion, psu: _PSU):
-    print(f"Measured voltage of PSU #{criterion.PSUidx} must be >= {criterion.PSUVoltageLow} V and <= {criterion.PSUVoltageHigh} V.")
+    logging.info(f"Measured voltage of PSU #{criterion.PSUidx} must be >= {criterion.PSUVoltageLow} V and <= {criterion.PSUVoltageHigh} V.")
     measured = psu.measureVoltage()
-    print(f"Measured voltage of PSU #{criterion.PSUidx}: {measured} V")
+    logging.info(f"Measured voltage of PSU #{criterion.PSUidx}: {measured} V")
     if (measured >= criterion.PSUVoltageLow) and (measured <= criterion.PSUVoltageHigh):
         return True
     else:
         return False
 
 def _evalPSUCurrent(criterion: Criterion, psu: _PSU):
-    print(f"Measured current of PSU #{criterion.PSUidx} must be >= {criterion.PSUCurrentLow} A and <= {criterion.PSUCurrentHigh} A.")
+    logging.info(f"Measured current of PSU #{criterion.PSUidx} must be >= {criterion.PSUCurrentLow} A and <= {criterion.PSUCurrentHigh} A.")
     measured = psu.measureCurrent()
-    print(f"Measured current of PSU #{criterion.PSUidx}: {measured} V")
+    logging.info(f"Measured current of PSU #{criterion.PSUidx}: {measured} V")
     if (measured >= criterion.PSUCurrentLow) and (measured <= criterion.PSUCurrentHigh):
         return True
     else:
@@ -170,7 +185,7 @@ class _DelayedInterrupt(object):
             self.old_handlers[sig] = signal.getsignal(sig)
             def handler(s, frame, sig=sig):
                 self.signal_received[sig] = (s, frame)
-                logging.info(f"Signal {s} received; delaying")
+                logging.debug(f"Signal {s} received; delaying")
             self.old_handlers[sig] = signal.getsignal(sig)
             signal.signal(sig, handler)
 

@@ -1,10 +1,10 @@
 Key Features ==========
 
-- Refactor EnvironmentControl
-    - Move parts of runTest into their own, self-contained functions
 - Change "CriteriaList" into "EventList"
     - An event could be a criterion evaluation, a change in PSU settings, a
         Tamalero script, a DAQ waveform retrieval, an interlock trigger, etc.
+    - We will likely only have a few criterion types, so consider refactoring
+        Criterion into individual classes (e.g. PSUVoltageCriterion)
     - Modify runTest to run a main loop on this EventList
 - Add PSU dependencies (e.g. PSU X must be enabled before PSU Y)
     - Config stored in EnvironmentConfig
@@ -35,9 +35,4 @@ QoL Features ==========
 
 - EnvironmentControl: Add log verbosity
 - EnvironmentControl: Add log-to-file
-    - Use the logging module for both of these
-- Replace test-ending exceptions with error logging and early exit
-    - In the future, we'd like to keep everything running after a test finishes,
-        so avoid crashing the program even if something fails during a test
-
 - Add a GUI!
