@@ -6,7 +6,7 @@ EnvironmentControl.
 """
 
 from EnvironmentConfig import PSUConfig
-import serial, socketscpi, time, re
+import serial, socketscpi, time, re, logging
 
 SCPI_WRITE_DELAY = 0.1
 
@@ -26,7 +26,7 @@ class _PSU:
                     baudrate=self.config.baudrate,
                     timeout=1.0
                 )
-                print(f"Opened serial port {self.config.COM}.")
+                logging.info(f"Opened serial port {self.config.COM}.")
                 self.ser.reset_input_buffer()
                 self.ser.reset_output_buffer()
             except serial.SerialException as e:
@@ -39,17 +39,17 @@ class _PSU:
         else:
             raise ValueError(f"Invalid protocol value: {self.config.protocol}")
         
-        print(f"IDN: {self.getIDN()}")
-        print(f"Version: {self.getVersion()}")
+        logging.info(f"IDN: {self.getIDN()}")
+        logging.info(f"Version: {self.getVersion()}")
     
     # Attempt to close any open connections when deallocated
     def __del__(self):
         if ("ser" in vars(self)) and self.ser and self.ser.is_open:
             self.ser.close()
-            print(f"Closed serial port {self.config.COM}.")
+            logging.info(f"Closed serial port {self.config.COM}.")
         if ("socket" in vars(self)) and self.socket:
             self.socket.close()
-            print(f"Closed IP socket {self.config.IP}.")
+            logging.info(f"Closed IP socket {self.config.IP}.")
 
     # Send an SCPI command and return the decoded response
     # Pass to _parseFloatSCPI to extract float
@@ -66,7 +66,7 @@ class _PSU:
             try:
                 return response.decode().strip() if response else ""
             except UnicodeDecodeError:
-                print("Unreadable response: ", response)
+                logging.warning("Unreadable response: ", response)
                 return ""
         elif (self.config.protocol == "IP"):
             if not self.socket:
