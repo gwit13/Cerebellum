@@ -1,14 +1,10 @@
 Key Features ==========
 
-- Add support for custom implementations of _PSU
-    - Refactor _PSU into an interface class, allow the user to write their own
-        implementations
-    - Make a factory function for taking PSUConfig objects and turning them into
-        intialized instances of the right class
+- Add support for custom implementations of PowerSupply
+    - Finish createPowerSupply to add this support
     - Pass IP/Serial config data from PSUConfig to the implementation
     - We will include implementations for Anagate CAN and CAEN HV
 - Add new Event types
-    - PSU settings change
     - Run arbitrary script (Tamalero)
     - DAQ waveform retrieval
     - Interlock trigger (+ DAQ waveform triggered by falling edge)
@@ -16,17 +12,6 @@ Key Features ==========
     - Config stored in EnvironmentConfig
     - Handled by _PSU in EnvironmentControl
     - Best to measure actual output voltage rather than trust setting
-- Add Tamalero tests
-    - Settings stored in TestSettings (under Criterion)
-    - Handled by new class in EnvironmentControl
-    - Will require calling existing Tamalero scripts
-    - Monitor/measure output and eval PASS/FAIL?
-- Add interlock + DAQ tests
-    - Config stored in EnvironmentConfig (under new classes)
-    - Settings stored in TestSettings (under Criterion)
-    - Handled by new class in EnvironmentControl
-    - Will require calling custom scripts for controlling interlock, due to the
-        unlimited variety of methods for toggling a physical pin
 - Add more software documentation
 - TBD: Add cold box control
     - Will again require calling custom scripts to keep things generalized

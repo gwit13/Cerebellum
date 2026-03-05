@@ -19,7 +19,7 @@ class TestSettings:
 
     def __init__(self):
         
-        self.PSUSettingsList    = []    # List of PSUSettings objects
+        self.PSUSettingsList    = []    # List of PSUSettingEvent objects
         self.eventList          = []    # List of Event objects
 
     """
@@ -29,7 +29,7 @@ class TestSettings:
 
         # Convert all objects to dicts
         vars_dict = vars(self).copy()
-        vars_dict["PSUSettingsList"] = [vars(PSU) for PSU in self.PSUSettingsList]
+        vars_dict["PSUSettingsList"] = [vars(psu) for psu in self.PSUSettingsList]
         vars_dict["eventList"] = [vars(event) for event in self.eventList]
         
         # Open file and write JSON
@@ -47,27 +47,16 @@ class TestSettings:
             self.__dict__ = load(f)
 
         # Convert object dicts to objects
-        for index, PSU in enumerate(self.PSUSettingsList):
-            self.PSUSettingsList[index] = PSUSettings(vars_dict=PSU)
+        for index, psu in enumerate(self.PSUSettingsList):
+            self.PSUSettingsList[index] = PSUSettingEvent(vars_dict=psu)
 
         for index, event in enumerate(self.eventList):
-            if (event.type == "EvalVoltageEvent"):
+            if (event.type == "PSUSettingEvent"):
+                self.eventList[index] = PSUSettingEvent(vars_dict=event)
+            elif (event.type == "EvalVoltageEvent"):
                 self.eventList[index] = EvalVoltageEvent(vars_dict=event)
             elif (event.type == "EvalCurrentEvent"):
                 self.eventList[index] = EvalCurrentEvent(vars_dict=event)
-
-
-
-class PSUSettings:
-    def __init__(self, vars_dict: dict = {}):
-        if vars_dict:
-            self.__dict__ = vars_dict.copy()
-        else:
-            self.PSUidx     = 0         # Index of the PSU (correlate with PSUConfigList in EnvironmentConfig)
-            self.channel    = 0         # PSU channel to impart these settings
-            self.enable     = True      # Is this power supply channel enabled for this test?
-            self.voltage    = 0.0       # Voltage setting
-            self.current    = 0.0       # Current setting
 
 
 
@@ -75,12 +64,24 @@ class Event:
     def __init__(self):
         self.type = ""
 
+class PSUSettingEvent:
+    def __init__(self, vars_dict: dict = {}):
+        if vars_dict:
+            self.__dict__ = vars_dict.copy()
+        else:
+            self.type           = "PSUSettingEvent"     # Object type (only used for JSON read/write)
+            self.PSUidx         = 0                     # Index of the PSU (correlate with PSUConfigList in EnvironmentConfig)
+            self.channel        = 0                     # PSU channel to impart these settings
+            self.enable         = True                  # Is this power supply channel enabled for this test?
+            self.voltage        = 0.0                   # Voltage setting
+            self.current        = 0.0                   # Current setting
+
 class EvalVoltageEvent(Event):
     def __init__(self, vars_dict={}):
         if vars_dict:
             self.__dict__ = vars_dict.copy()
         else:
-            self.type           = "EvalVoltageEvent"    # Object type (only used for JSON read/write)
+            self.type           = "EvalVoltageEvent"    # Object type
             self.PSUidx         = 0                     # Index of the PSU
             self.channel        = 0                     # PSU channel to measure
             self.VoltageLow     = 0.0                   # The measured voltage must be >= this voltage
@@ -91,7 +92,7 @@ class EvalCurrentEvent(Event):
         if vars_dict:
             self.__dict__ = vars_dict.copy()
         else:
-            self.type           = "EvalCurrentEvent"    # Object type (only used for JSON read/write)
+            self.type           = "EvalCurrentEvent"    # Object type
             self.PSUidx         = 0                     # Index of the PSU
             self.channel        = 0                     # PSU channel to measure
             self.CurrentLow     = 0.0                   # The measured current must be >= this current

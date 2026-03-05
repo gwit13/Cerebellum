@@ -63,7 +63,7 @@ class PSUConfig:
         if vars_dict:
             self.__dict__ = vars_dict.copy()
         else:
-            self.name           = "Power Supply"    # Display name of the power supply
+            self.displayName    = "Power Supply"    # Display name of the power supply
             self.interface      = ""                # Communication interface (SCPI / Custom)
             self.protocol       = ""                # Communication protocol (IP / Serial)
             self.IP             = ""                # IP address

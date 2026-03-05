@@ -1,0 +1,248 @@
+"""
+PowerSupply.py
+This file contains the PowerSupply interface, which specifies the high-level
+commands that EnvironmentControl will use.
+
+This file also contains SCPIPowerSupply, which is an implementation of the
+PowerSupply interface for an SCPI-controlled power supply, either over an IP
+or a Serial connection.
+
+Lastly, this file contains a factory function that will instantiate the correct
+object based on the input PSUConfig. For example, a config with an SCPI
+interface will be constructed as an SCPIPowerSupply.
+"""
+
+from EnvironmentConfig import PSUConfig
+from abc import ABC, abstractmethod
+import serial, socketscpi, time, re, logging
+
+SCPI_WRITE_DELAY = 0.1
+
+
+
+class PowerSupply(ABC):
+
+    """
+    Interface Methods ======================================================
+    """
+
+    # Initialize connection, possibly log ID
+    @abstractmethod
+    def __init__(self, config: PSUConfig) -> None:
+        pass
+
+    # Attempt to close any open connections when deallocated
+    @abstractmethod
+    def __del__(self) -> None:
+        pass
+    
+    # Get any identification data, such as IDN and version
+    @abstractmethod
+    def getID(self) -> str:
+        pass
+
+    # Set the voltage setting of the given channel
+    @abstractmethod
+    def setVoltage(self, voltage: float, channel: int) -> None:
+        pass
+
+    # Set the current setting of the given channel
+    @abstractmethod
+    def setCurrent(self, current: float, channel: int) -> None:
+        pass
+
+    # Get the voltage setting of the given channel
+    @abstractmethod
+    def getVoltage(self, channel: int) -> float:
+        pass
+
+    # Get the current setting of the given channel
+    @abstractmethod
+    def getCurrent(self, channel: int) -> float:
+        pass
+    
+    # Measure the voltage at the given channel
+    @abstractmethod
+    def measureVoltage(self, channel: int) -> float:
+        pass
+    
+    # Measure the current at the given channel
+    @abstractmethod
+    def measureCurrent(self, channel: int) -> float:
+        pass
+    
+    # Disable the given channel
+    @abstractmethod
+    def disableChannel(self, channel: int) -> None:
+        pass
+    
+    # Enable the given channel
+    @abstractmethod
+    def enableChannel(self, channel: int) -> None:
+        pass
+    
+    # Shutdown all channels
+    @abstractmethod
+    def shutdown(self) -> None:
+        pass
+
+
+
+class SCPIPowerSupply(PowerSupply):
+
+    """
+    Interface Methods ======================================================
+    """
+
+    # Initialize connection, possibly log ID
+    def __init__(self, config: PSUConfig):
+
+        self.config = config
+
+        if (self.config.protocol == "Serial"):
+            try:
+                self.ser = serial.Serial(
+                    port=self.config.COM,
+                    baudrate=self.config.baudrate,
+                    timeout=1.0
+                )
+                logging.info(f"Opened serial port {self.config.COM}.")
+                self.ser.reset_input_buffer()
+                self.ser.reset_output_buffer()
+            except serial.SerialException as e:
+                raise RuntimeError(f"Failed to open serial port {self.config.COM}: {e}")
+        elif (self.config.protocol == "IP"):
+            try:
+                self.socket = socketscpi.SocketInstrument(self.config.IP)
+            except socketscpi.SockInstError as e:
+                raise RuntimeError(f"Failed to open IP socket {self.config.IP}: {e}")
+        else:
+            raise ValueError(f"Invalid protocol value: {self.config.protocol}")
+        
+        logging.info(f"ID: {self.getID()}")
+
+    # Attempt to close any open connections when deallocated
+    def __del__(self):
+        if ("ser" in vars(self)) and self.ser and self.ser.is_open:
+            self.ser.close()
+            logging.info(f"Closed serial port {self.config.COM}.")
+        if ("socket" in vars(self)) and self.socket:
+            self.socket.close()
+            logging.info(f"Closed IP socket {self.config.IP}.")
+    
+    # Get any identification data, such as IDN and version
+    def getID(self):
+        IDN = self._querySCPI("*IDN?\n")
+        VERS = self._querySCPI("SYST:VERS?\n")
+        return f"(IDN: {IDN}), (Version: {VERS})"
+
+    # Set the voltage setting of the given channel
+    def setVoltage(self, voltage: float, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        self._writeSCPI(f"VOLT {voltage}\n")
+
+    # Set the current setting of the given channel
+    def setCurrent(self, current: float, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        self._writeSCPI(f"CURR {current}\n")
+
+    # Get the voltage setting of the given channel
+    def getVoltage(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        return self._parseFloatSCPI(self._querySCPI("VOLT?\n"))
+
+    # Get the current setting of the given channel
+    def getCurrent(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        return self._parseFloatSCPI(self._querySCPI("CURR?\n"))
+    
+    # Measure the voltage at the given channel
+    def measureVoltage(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        return self._parseFloatSCPI(self._querySCPI("MEAS:VOLT?\n"))
+    
+    # Measure the current at the given channel
+    def measureCurrent(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        return self._parseFloatSCPI(self._querySCPI("MEAS:CURR?\n"))
+    
+    # Disable the given channel
+    def disableChannel(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        self._writeSCPI(f"OUTP:STAT 0\n")
+    
+    # Enable the given channel
+    def enableChannel(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        self._writeSCPI(f"OUTP:STAT 1\n")
+    
+    # Shutdown all channels
+    def shutdown(self):
+        self._writeSCPI(f"OUTP:ALL 0\n")
+
+
+
+    """
+    Helper Methods =========================================================
+    """
+
+    # Send an SCPI command without reading a response
+    def _writeSCPI(self, cmd: str):
+
+        if (self.config.protocol == "Serial"):
+            if not self.ser or not self.ser.is_open:
+                raise RuntimeError(f"Serial port {self.config.COM} is not open.")
+            self.ser.reset_input_buffer()
+            self.ser.write(cmd.encode())
+            self.ser.flush()
+        elif (self.config.protocol == "IP"):
+            if not self.socket:
+                raise RuntimeError(f"IP socket {self.config.IP} is not open.")
+            self.socket.write(cmd)
+        else:
+            raise ValueError(f"Invalid protocol value: {self.config.protocol}")
+
+        time.sleep(SCPI_WRITE_DELAY)
+
+    # Send an SCPI command and return the decoded response
+    # Pass to _parseFloatSCPI to extract float
+    def _querySCPI(self, cmd: str):
+
+        if (self.config.protocol == "Serial"):
+            if not self.ser or not self.ser.is_open:
+                raise RuntimeError(f"Serial port {self.config.COM} is not open.")
+            self.ser.reset_input_buffer()
+            self.ser.write(cmd.encode())
+            self.ser.flush()
+            time.sleep(SCPI_WRITE_DELAY)
+            response = self.ser.readline()
+            try:
+                return response.decode().strip() if response else ""
+            except UnicodeDecodeError:
+                logging.warning(f"Unreadable response: {response}")
+                return ""
+        elif (self.config.protocol == "IP"):
+            if not self.socket:
+                raise RuntimeError(f"IP socket {self.config.IP} is not open.")
+            return self.socket.query(cmd)
+        else:
+            raise ValueError(f"Invalid protocol value: {self.config.protocol}")
+
+    # Extract a float (e.g. voltage) from a decoded SCPI response
+    @staticmethod
+    def _parseFloatSCPI(response: str):
+        match = re.search(r"[-+]?\d*\.?\d+", response)
+        if not match:
+            raise RuntimeError(f"Unable to locate value in response: {response}")
+        return float(match.group(0))
+
+
+
+def createPowerSupply(config: PSUConfig):
+    if (config.interface == "SCPI"):
+        return SCPIPowerSupply(config)
+    elif (config.interface == "Custom"):
+        # Add code here to call a custom constructor, given by config.filepath
+        raise NotImplementedError("Custom power supply interfaces have not been implemented yet.")
+    else:
+        raise ValueError(f"Invalid interface value: {config.interface}")
