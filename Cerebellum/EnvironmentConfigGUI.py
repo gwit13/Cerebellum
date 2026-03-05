@@ -62,11 +62,11 @@ class PSUConfigWidget(QGroupBox):
 
     def get_psu_config(self):
         config = PSUConfig()
-        config.protocol = self.protocol_edit.text()
+        config.protocol = self.protocol_edit.currentText()
         config.IP = self.ip_edit.text()
         config.COM = self.com_edit.text()
         config.baudrate = self.baudrate_spin.value()
-        config.interface = self.interface_edit.text()
+        config.interface = self.interface_edit.currentText()
         config.channel = self.channel_spin.value()
         return config
 
