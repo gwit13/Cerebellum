@@ -15,6 +15,8 @@ class PSUConfigWidget(QGroupBox):
         self.layout = QVBoxLayout(self)
 
         # Fields
+        self.displayname_edit = QLineEdit()
+
         self.protocol_edit = QComboBox()
         self.protocol_edit.setEditable(False)
         self.protocol_edit.addItems(["IP", "Serial"])
@@ -31,6 +33,7 @@ class PSUConfigWidget(QGroupBox):
 
         # Populate with data if provided
         if psu_config:
+            self.displayname_edit.setText(str(psu_config.displayName))
             self.protocol_edit.setCurrentText(str(psu_config.protocol))
             self.ip_edit.setText(str(psu_config.IP))
             self.com_edit.setText(str(psu_config.COM))
@@ -41,6 +44,7 @@ class PSUConfigWidget(QGroupBox):
             self.baudrate_spin.setValue(115200)
 
         # Layout setup
+        self.add_field("Display Name:", self.displayname_edit)
         self.add_field("Protocol:", self.protocol_edit)
         self.add_field("IP Address:", self.ip_edit)
         self.add_field("COM Port:", self.com_edit)
@@ -62,6 +66,7 @@ class PSUConfigWidget(QGroupBox):
 
     def get_psu_config(self):
         config = PSUConfig()
+        config.displayName = self.displayname_edit.text()
         config.protocol = self.protocol_edit.currentText()
         config.IP = self.ip_edit.text()
         config.COM = self.com_edit.text()
