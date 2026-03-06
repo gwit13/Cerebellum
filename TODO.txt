@@ -1,24 +1,38 @@
+Fixes ==========
+
+- Fix JSONs
+    - The current strategy for reading JSONs is causing typing issues; stop
+        copying to __dict__, and actually read the JSON
+    - Add an extra field in the JSON identifying it as an EnvironmentConfig
+        or TestSettings JSON
+- Fix typing
+    - Assign types to Config and Settings classes
+    - Consider adding return types to functions/methods and ensuring that they
+        will throw an exception rather than returning None
+- Add more comments and update existing ones
+
 Key Features ==========
 
 - Add support for custom implementations of PowerSupply
     - Finish createPowerSupply to add this support
-    - Pass IP/Serial config data from PSUConfig to the implementation
+    - Pass PSUConfig to the implementation
     - We will include implementations for Anagate CAN and CAEN HV
 - Add new Event types
     - Run arbitrary script (Tamalero)
     - DAQ waveform retrieval
     - Interlock trigger (+ DAQ waveform triggered by falling edge)
+- Consider an initEventList (instead of strictly SetPSUEvents)?
+    - Or even just a single Eventlist?
 - Add PSU dependencies (e.g. PSU X must be enabled before PSU Y)
     - Config stored in EnvironmentConfig
     - Handled by _PSU in EnvironmentControl
     - Best to measure actual output voltage rather than trust setting
-- Add more software documentation
 - TBD: Add cold box control
     - Will again require calling custom scripts to keep things generalized
     - Could require a certain temperature reading before starting test
 
 QoL Features ==========
 
-- EnvironmentControl: Add log verbosity
-- EnvironmentControl: Add log-to-file
-- Add a GUI!
+- Add log verbosity
+- Add log-to-file
+- Adjust log formatting

@@ -22,7 +22,27 @@ from json import dump, load
 
 
 
+class PSUConfig:
+
+    def __init__(self, vars_dict: dict = {}):
+        if vars_dict:
+            self.__dict__ = vars_dict.copy()
+        else:
+            self.displayName        = "Power Supply"    # Display name of the power supply
+            self.interface          = ""                # Communication interface (SCPI / Custom)
+            self.protocol           = ""                # Communication protocol (IP / Serial)
+            self.IP                 = ""                # IP address
+            self.COM                = ""                # COM port (e.g. /dev/ttyACM0, COM1)
+            self.baudrate           = 115200            # COM baudrate
+            self.implementationPath = ""                # Filepath to implementation for Custom interface
+            self.implementationName = ""                # Name of implementation class (i.e. constructor to call)
+
+
+
 class EnvironmentConfig:
+
+    addressRB       : str
+    PSUConfigList   : list[PSUConfig]
 
     def __init__(self):
         self.addressRB      = ""                # Ethernet IP address of KCU
@@ -35,7 +55,7 @@ class EnvironmentConfig:
 
         # Convert all objects to dicts
         vars_dict = vars(self).copy()
-        vars_dict["PSUConfigList"] = [vars(PSU) for PSU in self.PSUConfigList]
+        vars_dict["PSUConfigList"] = [vars(config) for config in self.PSUConfigList]
         
         # Open file and write JSON
         with open(filepath, 'w') as f:
@@ -52,21 +72,5 @@ class EnvironmentConfig:
             self.__dict__ = load(f)
 
         # Convert object dicts to objects
-        for index, PSU in enumerate(self.PSUConfigList):
-            self.PSUConfigList[index] = PSUConfig(vars_dict=PSU)
-
-
-
-class PSUConfig:
-
-    def __init__(self, vars_dict: dict = {}):
-        if vars_dict:
-            self.__dict__ = vars_dict.copy()
-        else:
-            self.displayName    = "Power Supply"    # Display name of the power supply
-            self.interface      = ""                # Communication interface (SCPI / Custom)
-            self.protocol       = ""                # Communication protocol (IP / Serial)
-            self.IP             = ""                # IP address
-            self.COM            = ""                # COM port (e.g. /dev/ttyACM0, COM1)
-            self.baudrate       = 115200            # COM baudrate
-            self.implementation = ""                # Filepath to implementation for Custom interface
+        for index, config in enumerate(self.PSUConfigList):
+            self.PSUConfigList[index] = PSUConfig(vars_dict=config)

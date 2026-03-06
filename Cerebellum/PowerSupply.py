@@ -12,8 +12,9 @@ object based on the input PSUConfig. For example, a config with an SCPI
 interface will be constructed as an SCPIPowerSupply.
 """
 
-from EnvironmentConfig import PSUConfig
+from Cerebellum.EnvironmentConfig import PSUConfig
 from abc import ABC, abstractmethod
+
 import serial, socketscpi, time, re, logging
 
 SCPI_WRITE_DELAY = 0.1
@@ -119,7 +120,7 @@ class SCPIPowerSupply(PowerSupply):
         else:
             raise ValueError(f"Invalid protocol value: {self.config.protocol}")
         
-        logging.info(f"ID: {self.getID()}")
+        logging.info(self.getID())
 
     # Attempt to close any open connections when deallocated
     def __del__(self):
@@ -134,7 +135,7 @@ class SCPIPowerSupply(PowerSupply):
     def getID(self):
         IDN = self._querySCPI("*IDN?\n")
         VERS = self._querySCPI("SYST:VERS?\n")
-        return f"(IDN: {IDN}), (Version: {VERS})"
+        return f"IDN: {IDN}, Version: {VERS}"
 
     # Set the voltage setting of the given channel
     def setVoltage(self, voltage: float, channel: int):
