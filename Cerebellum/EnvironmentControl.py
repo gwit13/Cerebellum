@@ -10,7 +10,7 @@ This file also contains several helper classes and functions.
 
 from Cerebellum.EnvironmentConfig import EnvironmentConfig, PSUConfig
 from Cerebellum.TestSettings import TestSettings, Event
-from Cerebellum.TestSettings import SetPSUEvent, EvalPSUVoltageEvent, EvalPSUCurrentEvent
+from Cerebellum.TestSettings import SetPSUEvent, EvalPSUVoltageEvent, EvalPSUCurrentEvent, EvalPSUPowerEvent
 from Cerebellum.PowerSupply import PowerSupply, createPowerSupply
 
 import logging, signal
@@ -97,7 +97,7 @@ def _execEvents(eventList: list[Event], PSUList: list[PowerSupply]):
     for idx, event in enumerate(eventList):
         logging.info(f"Executing event #{idx} -----")
         if isinstance(event, SetPSUEvent):
-            _setPSU(event, PSUList)
+            _setPSU(event, PSUList[event.PSUidx])
         elif isinstance(event, EvalPSUVoltageEvent):
             if (_evalPSUVoltage(event, PSUList[event.PSUidx])):
                 logging.info("PASS")
@@ -105,6 +105,11 @@ def _execEvents(eventList: list[Event], PSUList: list[PowerSupply]):
                 logging.info("FAIL")
         elif isinstance(event, EvalPSUCurrentEvent):
             if (_evalPSUCurrent(event, PSUList[event.PSUidx])):
+                logging.info("PASS")
+            else:
+                logging.info("FAIL")
+        elif isinstance(event, EvalPSUPowerEvent):
+            if (_evalPSUPower(event, PSUList[event.PSUidx])):
                 logging.info("PASS")
             else:
                 logging.info("FAIL")
@@ -159,8 +164,20 @@ def _evalPSUCurrent(event: EvalPSUCurrentEvent, psu: PowerSupply):
 
     # Measure the current and compare against the valid range
     measured = psu.measureCurrent(event.channel)
-    logging.info(f"Measured current of PSU #{event.PSUidx}: {measured} V")
+    logging.info(f"Measured current of PSU #{event.PSUidx}: {measured} A")
     if (measured >= event.CurrentLow) and (measured <= event.CurrentHigh):
+        return True
+    else:
+        return False
+    
+def _evalPSUPower(event: EvalPSUPowerEvent, psu: PowerSupply):
+    logging.info("EvalPSUPowerEvent:")
+    logging.info(f"Measured power of PSU #{event.PSUidx} must be >= {event.PowerLow} W and <= {event.PowerHigh} W.")
+
+    # Measure the power and compare against the valid range
+    measured = psu.measurePower(event.channel)
+    logging.info(f"Measured power of PSU #{event.PSUidx}: {measured} W")
+    if (measured >= event.PowerLow) and (measured <= event.PowerHigh):
         return True
     else:
         return False

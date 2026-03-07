@@ -53,6 +53,17 @@ class EvalPSUCurrentEvent(Event):
             self.CurrentLow     = 0.0                   # The measured current must be >= this current
             self.CurrentHigh    = float('inf')          # The measured current must be <= this current
 
+class EvalPSUPowerEvent(Event):
+    def __init__(self, vars_dict={}):
+        if vars_dict:
+            self.__dict__ = vars_dict.copy()
+        else:
+            self.type           = "EvalPSUPowerEvent"   # Object type
+            self.PSUidx         = 0                     # Index of the PSU
+            self.channel        = 0                     # PSU channel to measure
+            self.PowerLow       = 0.0                   # The measured power must be >= this power
+            self.PowerHigh      = float('inf')          # The measured power must be <= this power
+
 
 
 class TestSettings:
@@ -100,3 +111,5 @@ class TestSettings:
                 self.eventList[index] = EvalPSUVoltageEvent(vars_dict=event)
             elif (event["type"] == "EvalPSUCurrentEvent"):
                 self.eventList[index] = EvalPSUCurrentEvent(vars_dict=event)
+            elif (event["type"] == "EvalPSUPowerEvent"):
+                self.eventList[index] = EvalPSUPowerEvent(vars_dict=event)

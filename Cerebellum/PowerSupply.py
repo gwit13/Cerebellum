@@ -37,7 +37,7 @@ class PowerSupply(ABC):
     def __del__(self) -> None:
         pass
     
-    # Get any identification data, such as IDN and version
+    # Get any identification data
     @abstractmethod
     def getID(self) -> str:
         pass
@@ -71,6 +71,11 @@ class PowerSupply(ABC):
     @abstractmethod
     def measureCurrent(self, channel: int) -> float:
         pass
+
+    # Measure the power at the given channel
+    @abstractmethod
+    def measurePower(self, channel: int) -> float:
+        pass
     
     # Disable the given channel
     @abstractmethod
@@ -80,6 +85,11 @@ class PowerSupply(ABC):
     # Enable the given channel
     @abstractmethod
     def enableChannel(self, channel: int) -> None:
+        pass
+
+    # Return the enable/disable state of the given channel
+    @abstractmethod
+    def getChannelState(self, channel: int) -> bool:
         pass
     
     # Shutdown all channels
@@ -131,11 +141,11 @@ class SCPIPowerSupply(PowerSupply):
             self.socket.close()
             logging.info(f"Closed IP socket {self.config.IP}.")
     
-    # Get any identification data, such as IDN and version
+    # Get any identification data
     def getID(self):
         IDN = self._querySCPI("*IDN?\n")
         VERS = self._querySCPI("SYST:VERS?\n")
-        return f"IDN: {IDN}, Version: {VERS}"
+        return f"IDN: {IDN}, SCPI Version: {VERS}"
 
     # Set the voltage setting of the given channel
     def setVoltage(self, voltage: float, channel: int):
@@ -167,6 +177,11 @@ class SCPIPowerSupply(PowerSupply):
         self._writeSCPI(f"INST:SEL {channel}\n")
         return self._parseFloatSCPI(self._querySCPI("MEAS:CURR?\n"))
     
+    # Measure the power at the given channel
+    def measurePower(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        return self._parseFloatSCPI(self._querySCPI("MEAS:POW?\n"))
+    
     # Disable the given channel
     def disableChannel(self, channel: int):
         self._writeSCPI(f"INST:SEL {channel}\n")
@@ -176,6 +191,11 @@ class SCPIPowerSupply(PowerSupply):
     def enableChannel(self, channel: int):
         self._writeSCPI(f"INST:SEL {channel}\n")
         self._writeSCPI(f"OUTP:STAT 1\n")
+
+    # Return the enable/disable state of the given channel
+    def getChannelState(self, channel: int):
+        self._writeSCPI(f"INST:SEL {channel}\n")
+        return bool(self._querySCPI(f"OUTP:STAT?\n"))
     
     # Shutdown all channels
     def shutdown(self):
