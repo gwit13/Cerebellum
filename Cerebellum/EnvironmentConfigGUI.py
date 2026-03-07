@@ -28,8 +28,6 @@ class PSUConfigWidget(QGroupBox):
         self.interface_edit = QComboBox()
         self.interface_edit.setEditable(False)
         self.interface_edit.addItems(["SCPI", "Custom"])
-        self.channel_spin = QSpinBox()
-        self.channel_spin.setRange(0, 1000)
 
         # Custom Implementation Fields
         self.implementation_edit = QLineEdit()
@@ -45,7 +43,6 @@ class PSUConfigWidget(QGroupBox):
             self.com_edit.setText(str(psu_config.COM))
             self.baudrate_spin.setValue(int(psu_config.baudrate))
             self.interface_edit.setCurrentText(str(psu_config.interface))
-            self.channel_spin.setValue(int(psu_config.channel))
             self.implementation_edit.setText(str(getattr(psu_config, 'implementation', '')))
         else:
             self.baudrate_spin.setValue(115200)
@@ -57,7 +54,6 @@ class PSUConfigWidget(QGroupBox):
         self.add_field("COM Port:", self.com_edit)
         self.add_field("Baudrate:", self.baudrate_spin)
         self.add_field("Interface:", self.interface_edit)
-        self.add_field("Channel:", self.channel_spin)
 
         # Implementation layout
         self.implementation_layout = QHBoxLayout()
@@ -107,7 +103,6 @@ class PSUConfigWidget(QGroupBox):
         config.COM = self.com_edit.text()
         config.baudrate = self.baudrate_spin.value()
         config.interface = self.interface_edit.currentText()
-        config.channel = self.channel_spin.value()
         config.implementation = self.implementation_edit.text()
         return config
 

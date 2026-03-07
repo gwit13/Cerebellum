@@ -117,6 +117,13 @@ class GenericEventWidget(QGroupBox):
             child = self.dynamic_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+            elif child.layout():
+                sub_layout = child.layout()
+                while sub_layout.count():
+                    sub_child = sub_layout.takeAt(0)
+                    if sub_child.widget():
+                        sub_child.widget().deleteLater()
+                sub_layout.deleteLater()
 
     def add_dynamic_field(self, label_text, widget):
         h_layout = QHBoxLayout()
