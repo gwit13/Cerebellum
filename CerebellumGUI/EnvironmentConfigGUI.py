@@ -71,9 +71,56 @@ class PSUConfigWidget(QGroupBox):
         self.remove_button.setStyleSheet("background-color: #ffcccc; color: #cc0000; font-weight: bold;")
         self.layout.addWidget(self.remove_button)
 
+        # Custom Config layout
+        self.custom_config_layout = QVBoxLayout()
+        self.custom_config_label = QLabel("<b>Custom Configs:</b>")
+        self.custom_config_layout.addWidget(self.custom_config_label)
+        self.custom_config_widgets = []
+        self.add_custom_config_button = QPushButton("Add Custom Config")
+        self.add_custom_config_button.clicked.connect(self.add_custom_config_widget)
+        self.custom_config_layout.addWidget(self.add_custom_config_button)
+        self.layout.addLayout(self.custom_config_layout)
+
         # Initial visibility and connection
         self.update_implementation_visibility()
         self.interface_edit.currentTextChanged.connect(self.update_implementation_visibility)
+
+        # Populate custom configs if provided
+        if psu_config and hasattr(psu_config, 'customConfig'):
+            for k, v in psu_config.customConfig.items():
+                self.add_custom_config_widget(k, v)
+
+    def add_custom_config_widget(self, key="", value=""):
+        widget = QWidget()
+        h_layout = QHBoxLayout(widget)
+        h_layout.setContentsMargins(0, 0, 0, 0)
+
+        key_edit = QLineEdit(str(key))
+        key_edit.setPlaceholderText("Key")
+        value_edit = QLineEdit(str(value))
+        value_edit.setPlaceholderText("Value")
+
+        remove_btn = QPushButton("Remove")
+        remove_btn.setStyleSheet("color: #cc0000;")
+        remove_btn.clicked.connect(lambda: self.remove_custom_config_widget(widget))
+
+        h_layout.addWidget(key_edit)
+        h_layout.addWidget(value_edit)
+        h_layout.addWidget(remove_btn)
+
+        widget.key_edit = key_edit
+        widget.value_edit = value_edit
+
+        # Insert before the Add button
+        idx = self.custom_config_layout.indexOf(self.add_custom_config_button)
+        self.custom_config_layout.insertWidget(idx, widget)
+        self.custom_config_widgets.append(widget)
+
+    def remove_custom_config_widget(self, widget):
+        self.custom_config_layout.removeWidget(widget)
+        widget.deleteLater()
+        if widget in self.custom_config_widgets:
+            self.custom_config_widgets.remove(widget)
 
     def upload_implementation(self):
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -90,6 +137,10 @@ class PSUConfigWidget(QGroupBox):
         self.implementation_label.setVisible(is_custom)
         self.implementation_edit.setVisible(is_custom)
         self.implementation_button.setVisible(is_custom)
+        self.custom_config_label.setVisible(is_custom)
+        self.add_custom_config_button.setVisible(is_custom)
+        for w in self.custom_config_widgets:
+            w.setVisible(is_custom)
 
     def add_field(self, label_text, widget):
         h_layout = QHBoxLayout()
@@ -107,6 +158,19 @@ class PSUConfigWidget(QGroupBox):
         config.baudrate = self.baudrate_spin.value()
         config.interface = self.interface_edit.currentText()
         config.implementation = self.implementation_edit.text()
+
+        custom_config = {}
+        if config.interface == "Custom":
+            for w in self.custom_config_widgets:
+                k = w.key_edit.text().strip()
+                v = w.value_edit.text().strip()
+                if not k:
+                    continue
+                if k in custom_config:
+                    raise ValueError(f"Duplicate key '{k}' found in custom config for PSU '{config.displayName}'. Keys must be unique.")
+                custom_config[k] = v
+        config.customConfig = custom_config
+
         return config
 
 

@@ -293,6 +293,15 @@ class TestConfigGUI(QWidget):
         self.file_buttons_layout.addWidget(self.save_button)
         self.main_layout.addLayout(self.file_buttons_layout)
 
+        # Shutdown Order
+        self.shutdown_order_layout = QHBoxLayout()
+        self.shutdown_order_label = QLabel("Shutdown Order (Comma-separated PSU Indices):")
+        self.shutdown_order_edit = QLineEdit()
+        self.shutdown_order_edit.setPlaceholderText("e.g. 1, 0, 2")
+        self.shutdown_order_layout.addWidget(self.shutdown_order_label)
+        self.shutdown_order_layout.addWidget(self.shutdown_order_edit)
+        self.main_layout.addLayout(self.shutdown_order_layout)
+
         # Scrolling Area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -301,22 +310,6 @@ class TestConfigGUI(QWidget):
         self.scroll_layout.setAlignment(Qt.AlignTop)
         self.scroll_area.setWidget(self.scroll_container)
         self.main_layout.addWidget(self.scroll_area)
-
-        # PSU Settings List
-        self.psu_settings_label = QLabel("<b>PSU Setup Phase (PSUSettingsList)</b>")
-        self.scroll_layout.addWidget(self.psu_settings_label)
-
-        self.psu_settings_widgets = []
-
-        self.add_psu_setting_btn = QPushButton("Add PSU Setting")
-        self.add_psu_setting_btn.clicked.connect(self.add_psu_setting_widget)
-        self.scroll_layout.addWidget(self.add_psu_setting_btn)
-
-        # Divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.HLine)
-        divider.setFrameShadow(QFrame.Sunken)
-        self.scroll_layout.addWidget(divider)
 
         # Event List
         self.events_label = QLabel("<b>Test Sequence Phase (eventList)</b>")
@@ -343,26 +336,9 @@ class TestConfigGUI(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to load Environment Config JSON:\n{str(e)}")
 
     def update_all_psu_dropdowns(self):
-        for w in self.psu_settings_widgets:
-            w.psu_config_list = self.psu_config_list
-            w.update_psu_dropdown()
         for w in self.event_widgets:
             w.psu_config_list = self.psu_config_list
             w.update_psu_dropdown()
-
-    def add_psu_setting_widget(self, event=None):
-        widget = SetPSUEventWidget(self.psu_config_list, event)
-        # Insert before the add button
-        idx = self.scroll_layout.indexOf(self.add_psu_setting_btn)
-        self.scroll_layout.insertWidget(idx, widget)
-        self.psu_settings_widgets.append(widget)
-        widget.remove_button.clicked.connect(lambda: self.remove_psu_setting_widget(widget))
-
-    def remove_psu_setting_widget(self, widget):
-        self.scroll_layout.removeWidget(widget)
-        widget.deleteLater()
-        if widget in self.psu_settings_widgets:
-            self.psu_settings_widgets.remove(widget)
 
     def add_event_widget(self, event=None):
         widget = GenericEventWidget(self.psu_config_list, event)
@@ -388,14 +364,12 @@ class TestConfigGUI(QWidget):
             settings.readJSON(filepath)
 
             # Clear current
-            for w in list(self.psu_settings_widgets):
-                self.remove_psu_setting_widget(w)
             for w in list(self.event_widgets):
                 self.remove_event_widget(w)
 
             # Populate
-            for psu in settings.PSUSettingsList:
-                self.add_psu_setting_widget(psu)
+            self.shutdown_order_edit.setText(", ".join(map(str, settings.shutdownOrder)))
+
             for event in settings.eventList:
                 self.add_event_widget(event)
 
@@ -410,8 +384,18 @@ class TestConfigGUI(QWidget):
 
         try:
             settings = TestSettings()
-            for w in self.psu_settings_widgets:
-                settings.PSUSettingsList.append(w.get_event())
+
+            # Parse shutdownOrder
+            shutdown_text = self.shutdown_order_edit.text().strip()
+            if shutdown_text:
+                try:
+                    shutdown_order = [int(x.strip()) for x in shutdown_text.split(',')]
+                    settings.shutdownOrder = shutdown_order
+                except ValueError:
+                    raise ValueError("Shutdown Order must be a comma-separated list of integers.")
+            else:
+                settings.shutdownOrder = []
+
             for w in self.event_widgets:
                 settings.eventList.append(w.get_event())
 

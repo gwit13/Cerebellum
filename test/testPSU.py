@@ -43,7 +43,7 @@ else:
     setEvent1.channel = 0
     setEvent1.voltage = 9.0
     setEvent1.current = 6.0
-    settings.PSUSettingsList.append(setEvent1)
+    settings.eventList.append(setEvent1)
 
     if CAEN:
         setEvent2 = SetPSUEvent()
@@ -51,7 +51,7 @@ else:
         setEvent2.channel = 0
         setEvent2.voltage = 2.0
         setEvent2.current = 0.5
-        settings.PSUSettingsList.append(setEvent2)
+        settings.eventList.append(setEvent2)
 
     eval_event1 = EvalPSUPowerEvent()
     eval_event1.PSUidx = 0
